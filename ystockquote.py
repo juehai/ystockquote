@@ -13,7 +13,7 @@
 #  Requires: Python 2.7/3.3+
 
 
-__version__ = '0.2.6dev'  # NOQA
+__version__ = '0.2.7dev'  # NOQA
 
 
 try:
@@ -24,6 +24,9 @@ except ImportError:
     # py2
     from urllib2 import Request, urlopen
     from urllib import urlencode
+from datetime import datetime, timedelta
+import re
+import json
 
 
 def _request(symbol, stat):
@@ -470,32 +473,30 @@ def get_historical_prices(symbol, start_date, end_date):
     Returns a nested dictionary (dict of dicts).
     outer dict keys are dates ('YYYY-MM-DD')
     """
+    epoch = datetime(1970, 1, 1)
+    p1 = datetime.strptime(start_date, '%Y-%m-%d')
+    p2 = datetime.strptime(end_date, '%Y-%m-%d')
     params = urlencode({
-        's': symbol,
-        'a': int(start_date[5:7]) - 1,
-        'b': int(start_date[8:10]),
-        'c': int(start_date[0:4]),
-        'd': int(end_date[5:7]) - 1,
-        'e': int(end_date[8:10]),
-        'f': int(end_date[0:4]),
-        'g': 'd',
-        'ignore': '.csv',
+       'period1': int((p1 - epoch).total_seconds()),
+       'period2': int((p2 - epoch + timedelta(days=1)).total_seconds()),
+       'frequency': '1d',
+       'filter': 'history',
     })
-    url = 'http://real-chart.finance.yahoo.com/table.csv?%s' % params
+    url = 'https://finance.yahoo.com/quote/%s/history?%s' % (symbol, params)
     req = Request(url)
     resp = urlopen(req)
-    content = str(resp.read().decode('utf-8').strip())
-    daily_data = content.splitlines()
+    content = resp.read()
+    quotes = re.findall('{"date":\d+[^}]+}', content)
     hist_dict = dict()
-    keys = daily_data[0].split(',')
-    for day in daily_data[1:]:
-        day_data = day.split(',')
-        date = day_data[0]
-        hist_dict[date] = \
-            {keys[1]: day_data[1],
-             keys[2]: day_data[2],
-             keys[3]: day_data[3],
-             keys[4]: day_data[4],
-             keys[5]: day_data[5],
-             keys[6]: day_data[6]}
+    for quote in quotes:
+        j = json.loads(quote)
+        for k in ('open', 'close', 'high', 'low', 'unadjclose'):
+            j[k] = "%.2f" % j[k]
+        d = timedelta(seconds=j["date"])
+        # these keys are for backwards compatibility
+        for key in j.keys():
+            j[key.capitalize()] = j[key]
+        j['Adj Close'] = j['unadjclose']
+        date = epoch + d
+        hist_dict[date.date().isoformat()] = j
     return hist_dict
