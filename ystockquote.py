@@ -490,7 +490,7 @@ def get_historical_prices(symbol, start_date, end_date):
     content = resp.read()
     quotes = re.findall('{"date":\d+[^}]+}', content)
     hist_dict = dict()
-    for quote in quotes
+    for quote in quotes:
         try:
             j = json.loads(quote)
             for k in ('open', 'close', 'high', 'low', 'unadjclose'):
