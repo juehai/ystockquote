@@ -490,15 +490,18 @@ def get_historical_prices(symbol, start_date, end_date):
     content = resp.read()
     quotes = re.findall('{"date":\d+[^}]+}', content)
     hist_dict = dict()
-    for quote in quotes:
-        j = json.loads(quote)
-        for k in ('open', 'close', 'high', 'low', 'unadjclose'):
-            j[k] = "%.2f" % j[k]
-        d = timedelta(seconds=j["date"])
-        # these keys are for backwards compatibility
-        for key in j.keys():
-            j[key.capitalize()] = j[key]
-        j['Adj Close'] = j['unadjclose']
-        date = epoch + d
-        hist_dict[date.date().isoformat()] = j
+    for quote in quotes
+        try:
+            j = json.loads(quote)
+            for k in ('open', 'close', 'high', 'low', 'unadjclose'):
+                j[k] = "%.2f" % j[k]
+            d = timedelta(seconds=j["date"])
+            # these keys are for backwards compatibility
+            for key in j.keys():
+                j[key.capitalize()] = j[key]
+            j['Adj Close'] = j['unadjclose']
+            date = epoch + d
+            hist_dict[date.date().isoformat()] = j
+        except:
+            pass
     return hist_dict
