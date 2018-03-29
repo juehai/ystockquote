@@ -493,13 +493,13 @@ def get_historical_prices(symbol, start_date, end_date):
     for quote in quotes:
         try:
             j = json.loads(quote)
-            for k in ('open', 'close', 'high', 'low', 'unadjclose'):
+            for k in ('open', 'close', 'high', 'low', 'adjclose'):
                 j[k] = "%.2f" % j[k]
             d = timedelta(seconds=j["date"])
             # these keys are for backwards compatibility
             for key in j.keys():
                 j[key.capitalize()] = j[key]
-            j['Adj Close'] = j['unadjclose']
+            j['Adj Close'] = j['adjclose']
             date = epoch + d
             hist_dict[date.date().isoformat()] = j
         except:
