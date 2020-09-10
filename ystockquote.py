@@ -474,6 +474,7 @@ def get_historical_prices(symbol, start_date, end_date):
 
     Returns a nested dictionary (dict of dicts).
     outer dict keys are dates ('YYYY-MM-DD')
+    e.g. https://query1.finance.yahoo.com/v7/finance/download/FB?period1=1567296000&period2=1599004800&interval=1d&events=history
     """
     epoch = datetime(1970, 1, 1)
     p1 = datetime.strptime(start_date, '%Y-%m-%d')
@@ -481,27 +482,24 @@ def get_historical_prices(symbol, start_date, end_date):
     params = urlencode({
        'period1': int((p1 - epoch).total_seconds()),
        'period2': int((p2 - epoch + timedelta(days=1)).total_seconds()),
-       'frequency': '1d',
-       'filter': 'history',
+       'interval': '1d',
+       'events': 'history',
     })
-    url = 'https://finance.yahoo.com/quote/%s/history?%s' % (symbol, params)
+    url = 'https://query1.finance.yahoo.com/v7/finance/download/%s?%s' % (symbol, params)
     req = Request(url)
     resp = urlopen(req)
-    content = resp.read()
-    quotes = re.findall('{"date":\d+[^}]+}', content)
+    content = str(resp.read().decode('utf-8').strip())
+    daily_data = content.splitlines()
     hist_dict = dict()
-    for quote in quotes:
-        try:
-            j = json.loads(quote)
-            for k in ('open', 'close', 'high', 'low', 'adjclose'):
-                j[k] = "%.2f" % j[k]
-            d = timedelta(seconds=j["date"])
-            # these keys are for backwards compatibility
-            for key in j.keys():
-                j[key.capitalize()] = j[key]
-            j['Adj Close'] = j['adjclose']
-            date = epoch + d
-            hist_dict[date.date().isoformat()] = j
-        except:
-            pass
+    keys = daily_data[0].split(',')
+    for day in daily_data[1:]:
+        day_data = day.split(',')
+        date = day_data[0]
+        hist_dict[date] = \
+            {keys[1]: day_data[1],
+             keys[2]: day_data[2],
+             keys[3]: day_data[3],
+             keys[4]: day_data[4],
+             keys[5]: day_data[5],
+             keys[6]: day_data[6]}
     return hist_dict
